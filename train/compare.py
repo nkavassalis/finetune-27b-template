@@ -1,0 +1,169 @@
+"""Base vs fine-tuned generations on the held-out set. Runs on the GPU node.
+
+Two decoding regimes, each run for both arms:
+  greedy   deterministic; comparable to run-1
+  sampled  temperature 0.7, top_p 0.95, repetition_penalty 1.1, seeded — what a
+           person trying the model will actually see (greedy loops on 36% of
+           run-1 outputs)
+
+One model load: the base model is the same weights with the LoRA adapter
+disabled (`disable_adapter()`), so both arms see identical prompts, identical
+decoding (greedy), and identical weights apart from the adapter.
+
+    python3 compare.py --adapter run-1/adapter-final --eval sft_eval.jsonl \
+        --out run-1/compare.jsonl
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import json
+import random
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root: ft27b
+
+import torch  # noqa: E402
+from peft import PeftModel  # noqa: E402
+from transformers import AutoModelForImageTextToText, AutoTokenizer  # noqa: E402
+
+from ft27b import config as ftconfig  # noqa: E402
+from ft27b.template import TRUNC_MARK  # noqa: E402
+from ft27b.template import prompt_text as render  # noqa: E402
+
+CFG = ftconfig.load(None)
+
+
+def prompt_text(tok, user: str) -> str:
+    return render(tok, CFG.system, user, enable_thinking=CFG.enable_thinking)
+
+
+def build_prompts(tok, rows, max_prompt: int) -> list[str]:
+    out = []
+    for r in rows:
+        user = r["input"]
+        ids = tok(user, add_special_tokens=False)["input_ids"]
+        if len(ids) > max_prompt:
+            user = tok.decode(ids[:max_prompt]) + TRUNC_MARK
+        out.append(prompt_text(tok, user))
+    return out
+
+
+SAMPLING = {"do_sample": True, "temperature": CFG["eval"].get("temperature", 0.7),
+            "top_p": CFG["eval"].get("top_p", 0.95),
+            "repetition_penalty": CFG["eval"].get("repetition_penalty", 1.1)}
+
+
+@torch.no_grad()
+def generate(model, tok, prompts, batch: int, max_new: int, *, sample: bool,
+             seed: int = 7) -> list[str]:
+    texts: list[str] = []
+    decoding = SAMPLING if sample else {"do_sample": False}
+
+    def run_batch(chunk: list[str], seed_: int) -> list[str]:
+        enc = tok(chunk, return_tensors="pt", padding=True,
+                  add_special_tokens=False).to("cuda")
+        torch.manual_seed(seed_)
+        gen = model.generate(**enc, max_new_tokens=max_new, pad_token_id=tok.pad_token_id,
+                             **decoding)
+        return tok.batch_decode(gen[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)
+
+    def safe_batch(chunk: list[str], seed_: int) -> list[str]:
+        # Batch 16 was never tried on this GPU before the run; on OOM, halve and
+        # retry rather than lose hours of training to a crash in the eval step.
+        try:
+            return run_batch(chunk, seed_)
+        except torch.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            if len(chunk) == 1:
+                raise
+            half = len(chunk) // 2
+            print(f"OOM at batch {len(chunk)}, retrying as 2 x {half}", flush=True)
+            return safe_batch(chunk[:half], seed_) + safe_batch(chunk[half:], seed_ + 1)
+
+    for i in range(0, len(prompts), batch):
+        texts += safe_batch(prompts[i : i + batch], seed + i)
+        mode = "sampled" if sample else "greedy"
+        print(f"[{time.strftime('%H:%M:%S')}] {mode} {min(i + batch, len(prompts))}/"
+              f"{len(prompts)}", flush=True)
+    return texts
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=CFG.base)
+    ap.add_argument("--adapter", help="single adapter (v1/v2 layout: base + tuned arms)")
+    ap.add_argument("--adapters", nargs="*", default=[],
+                    help="several adapters as name=path, e.g. v2=run-2/adapter-final")
+    ap.add_argument("--arms", default="",
+                    help="comma list of arms to run: 'base' and/or adapter names")
+    ap.add_argument("--modes", default="greedy,sampled", help="greedy and/or sampled")
+    ap.add_argument("--eval", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--subset", type=int, default=None,
+                    help="fixed random subset of N eval rows (same N + seed = same rows)")
+    ap.add_argument("--subset-seed", type=int, default=CFG["eval"].get("subset_seed", 7))
+    ap.add_argument("--batch", type=int, default=16)
+    # 400 cut off 50/78 base reviews mid-sentence in run-1 and biased the judge.
+    ap.add_argument("--max-new", type=int, default=CFG["eval"].get("max_new_tokens", 1024))
+    ap.add_argument("--no-sample", action="store_true", help="greedy arms only (legacy)")
+    ap.add_argument("--max-prompt", type=int, default=3000)
+    args = ap.parse_args()
+
+    tok = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    with open(args.eval) as f:
+        rows = [json.loads(line) for line in f][: args.limit]
+    if args.subset:
+        idx = sorted(random.Random(args.subset_seed).sample(range(len(rows)), args.subset))
+        rows = [rows[i] | {"eval_index": i} for i in idx]
+    prompts = build_prompts(tok, rows, args.max_prompt)
+    model = AutoModelForImageTextToText.from_pretrained(
+        args.model, dtype=torch.bfloat16, device_map={"": 0})
+
+    named = dict(a.split("=", 1) for a in args.adapters)
+    if args.adapter:  # legacy layout: one adapter called "tuned"
+        named = {"tuned": args.adapter}
+    first = True
+    for name, path in named.items():
+        if first:
+            model = PeftModel.from_pretrained(model, path, adapter_name=name)
+            first = False
+        else:
+            model.load_adapter(path, adapter_name=name)
+    model.eval()
+
+    out = [{"input": r["input"], "reference": r["output"],
+            **({"eval_index": r["eval_index"]} if "eval_index" in r else {})} for r in rows]
+
+    def run(arm: str, mode: str) -> None:
+        sample = mode == "sampled"
+        if arm == "base":
+            ctx = model.disable_adapter() if named else contextlib.nullcontext()
+            with ctx:
+                texts = generate(model, tok, prompts, args.batch, args.max_new, sample=sample)
+        else:
+            model.set_adapter(arm)
+            texts = generate(model, tok, prompts, args.batch, args.max_new, sample=sample)
+        # legacy key names: tuned / base / tuned_sampled / base_sampled
+        key = arm if mode == "greedy" else f"{arm}_sampled"
+        for row, text in zip(out, texts, strict=True):
+            row[key] = text
+        with open(args.out, "w") as f:  # rewritten after every arm: a crash keeps the rest
+            for row in out:
+                f.write(json.dumps(row) + "\n")
+        print(f"wrote {key} for {len(out)} rows to {args.out}", flush=True)
+
+    arms = [a for a in args.arms.split(",") if a] or (["tuned", "base"] if args.adapter else [])
+    modes = [m for m in args.modes.split(",") if m]
+    if args.no_sample:
+        modes = ["greedy"]
+    for mode in modes:
+        for arm in arms:
+            run(arm, mode)
+
+
+if __name__ == "__main__":
+    main()

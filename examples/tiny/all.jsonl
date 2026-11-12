@@ -1,0 +1,12 @@
+{"input": "How do I reverse a list in Python?", "output": "Use slicing: xs[::-1] returns a reversed copy; xs.reverse() reverses in place.", "group": "2023"}
+{"input": "What does git rebase -i do?", "output": "It replays your commits onto a new base and lets you reorder, squash or edit them first.", "group": "2023"}
+{"input": "Why is my Docker image so large?", "output": "Usually build tools left in the final layer. Use a multi-stage build and copy only the artefact.", "group": "2023"}
+{"input": "When should I use a set instead of a list?", "output": "When you need fast membership tests or uniqueness and don't care about order.", "group": "2023"}
+{"input": "What is a race condition?", "output": "Two threads touch shared state without ordering, so the result depends on timing.", "group": "2023"}
+{"input": "How do I find which process holds a port?", "output": "On Linux: ss -ltnp | grep :8000, or lsof -i :8000.", "group": "2023"}
+{"input": "Difference between TCP and UDP?", "output": "TCP gives ordered, reliable delivery with connection setup; UDP sends datagrams with neither.", "group": "2023"}
+{"input": "What does chmod 600 mean?", "output": "Owner can read and write; group and others get nothing. Typical for private keys.", "group": "2023"}
+{"input": "Why use a virtualenv?", "output": "It isolates a project's packages so upgrades for one project can't break another.", "group": "2023"}
+{"input": "How do I undo the last commit but keep changes?", "output": "git reset --soft HEAD~1 moves the branch back and leaves your changes staged.", "group": "2024"}
+{"input": "What is idempotence?", "output": "Running an operation twice has the same effect as running it once, which makes retries safe.", "group": "2024"}
+{"input": "How do I measure a function's runtime in Python?", "output": "time.perf_counter() before and after, or timeit for repeated small measurements.", "group": "2024"}

@@ -1,0 +1,49 @@
+# The one config file. Every script reads it: training, evaluation,
+# inference and conversion. Edit this, not the scripts.
+
+[project]
+name = "my-finetune"
+description = "What this model does, in one line"
+
+[model]
+base = "Qwen/Qwen3.8-27B"
+# LoRA targets: every linear layer of the language model, vision tower untouched.
+# For a different base, list its Linear module names with `ft27b targets`.
+lora_targets = 'model\.language_model\..*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj|in_proj_qkv|in_proj_z|out_proj)'
+lora_r = 16
+lora_alpha = 32
+lora_dropout = 0.05
+max_len = 4096          # prompt + response tokens per training example
+enable_thinking = false # train and infer with an empty <think></think>
+
+[prompt]
+# The system prompt, used identically in training, evaluation and inference.
+system = "You are a helpful assistant."
+
+[data]
+train = "data/sft.jsonl"
+eval = "data/sft_eval.jsonl"
+# Hold out by a grouping key (time, repo, author), never at random: rows near
+# each other in time or source leak into each other and flatter every score.
+split_key = "group"
+eval_groups = []        # e.g. ["2023", "2024"]
+
+[train]
+lr = 1e-4
+epochs = 1              # one epoch is usually enough; a second overfit in lkml-reviewer
+effective_batch = 8     # sequences per optimizer step, across all nodes
+mem_fraction = 0.75     # allocator cap on unified memory (docs/OPERATIONS.md, rule 2)
+save_every = 50         # steps between resumable checkpoints
+
+[eval]
+subset = 100            # fixed random held-out rows to generate for
+subset_seed = 7
+max_new_tokens = 1024
+temperature = 0.7
+top_p = 0.95
+repetition_penalty = 1.1
+
+[convert]
+bits = 8                # MLX quantization; 8 is the default target (docs/CONVERSION.md)
+group_size = 64
+mac_wired_limit_gb = 48 # what macOS lets the GPU wire on the target Mac (~75% of RAM by default)

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ft27b"
+version = "0.1.0"
+description = "Template: LoRA fine-tune a 27B model on DGX Spark, evaluate it, ship it to a Mac as MLX 8-bit"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Nick Kavassalis" }]
+# The core (config, data validation, sizing, split, sample) is stdlib-only.
+dependencies = []
+
+[project.optional-dependencies]
+# Training and CUDA inference. Pinned to the stack lkml-reviewer was trained on;
+# torch is left unpinned so you can pick the CUDA build for your machine.
+cuda = [
+    "torch>=2.13",
+    "transformers==5.19.0",
+    "peft==0.21.2",
+    "accelerate==1.15.0",
+    "safetensors>=0.8",
+    "flash-linear-attention==0.6.0",
+]
+# Apple silicon inference and conversion (merge needs torch too: CPU is fine).
+mlx = ["mlx-lm==0.32.2", "torch>=2.13", "safetensors>=0.8", "huggingface_hub>=1"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+ft27b = "ft27b.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/nkavassalis/finetune-27b-template"
+"Worked example" = "https://github.com/nkavassalis/lkml-reviewer"
+
+[tool.setuptools]
+packages = ["ft27b"]

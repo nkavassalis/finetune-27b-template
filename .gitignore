@@ -1,0 +1,25 @@
+# data, runs and weights never enter git
+data/
+runs/
+*.safetensors
+*.bin
+*.gguf
+mlx-*/
+merged-*/
+
+# local-only config: hosts, addresses, watchlists
+.status.env
+.secret-watchlist
+.env
+.env.*
+
+# python / tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+.DS_Store

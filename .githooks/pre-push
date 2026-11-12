@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Before any push to a network remote: the gate must pass and the secret scan
+# must be clean. Enable once per clone:  git config core.hooksPath .githooks
+set -uo pipefail
+while read -r _l _ls _r _rs; do :; done   # drain the refs git pipes in
+url="${2:-}"
+case "$url" in ""|/*|file://*) exit 0 ;; esac   # local / disk backup
+root=$(git rev-parse --show-toplevel)
+"$root/scripts/gate.sh" || { echo "pre-push: REFUSED — the gate failed" >&2; exit 1; }
+args=(--range "origin/main..HEAD")
+git rev-parse -q --verify origin/main >/dev/null || args=(--all)   # first push
+"$root/scripts/secret-scan.sh" "${args[@]}" || { echo "pre-push: REFUSED — secret scan hits" >&2; exit 1; }
