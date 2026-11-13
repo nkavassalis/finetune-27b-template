@@ -158,6 +158,23 @@ tools here:
      loose definition (any long word) put the same two slices at 47% vs
      54%. Use the definition that measures what you care about, and report it.
 
+3. **How big is the noise?** Before believing any difference, measure the
+   noise floor: two samples from the *same* model on *byte-identical* inputs.
+   On lkml-reviewer they scored 46% vs 23% on a 13-input slice. With one
+   sample per input on ~100 inputs, only large effects are visible, which is
+   partly why v3 vs v2 came out "a tie". Generate several samples per input
+   (`compare.py --samples K`) and compare with `train/paired_stats.py`. It
+   gives a paired bootstrap CI for each difference, next to the noise floor's
+   CI. A difference inside the noise band is not a finding.
+4. **Can you test the lever without training?** Many levers can be tried at
+   inference first: an input layout, a prompt, a decoding setting. lkml-reviewer
+   tested "patch before thread" by reordering v3's inputs at inference, with no
+   retraining, and got much of the expected gain (patch grounding with context
+   20% → 33%, CI +1..+25 points). That made the planned retrain worth less as
+   an experiment, but still worth running as the base for the next step. An
+   inference probe takes an hour on a laptop-class machine; a training run
+   takes a night of the cluster.
+
 Then map each finding to one lever, and change as few things at once as you
 can, so the next comparison can tell you which change mattered:
 

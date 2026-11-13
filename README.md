@@ -46,6 +46,7 @@ scripts/night-reporter.sh start                 # optional: email PROBLEM / Repo
 # 5. evaluate
 python3 train/score.py runs/run-1/compare.jsonl
 python3 train/slice.py runs/run-1/compare.jsonl --primary-marker '...' --context-marker '...'  # where it fails
+python3 train/paired_stats.py A.jsonl:v1 B.jsonl:v2 --primary-marker '...'  # is the difference bigger than the noise?
 JUDGE_URL=... python3 train/judge_check.py runs/run-1/compare.jsonl 20 runs/run-1/judge_check.jsonl
 JUDGE_URL=... python3 train/judge.py runs/run-1/compare.jsonl runs/run-1/judge.jsonl --pair base_sampled,tuned_sampled
 
@@ -60,7 +61,7 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 | --- | --- |
 | `project.toml` | **the one config**: base model, system prompt, LoRA, data, training, eval, conversion |
 | `ft27b/` | stdlib-only core: `config`, `template` (the one prompt format), `data` (validate / split / sample), `sizing` (Mac fit calculator), `order` (resumable data order), `infer` (cuda / mlx), CLI |
-| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh`, `night-run.sh` + `window-lib.sh` (optional overnight maintenance window) |
+| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `paired_stats.py` (paired CIs and the noise floor), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh`, `night-run.sh` + `window-lib.sh` (optional overnight maintenance window) |
 | `scripts/` | `gate.sh`, `secret-scan.sh`, `status.sh` (hourly status), `night-reporter.sh` + `notify.sh` (optional email reports for unattended runs), `sync-to-node.sh`, `convert-mlx.sh`; `.status.env.example` |
 | `docs/` | `METHOD.md` (start here; §4 is how to go from one version to the next), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `PLAN-template.md`, `REPORT-template.md` |
 | `tests/` | hermetic tests pinning each lesson; real Qwen3.8-27B config fixtures |
@@ -85,6 +86,9 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 6. **Slice before you change anything.** Aggregates hide where a model fails;
    check train-vs-held-out distributions (`ft27b shift`) and per-slice
    grounding (`train/slice.py`), then change one thing per finding.
+7. **Measure the noise floor, and probe at inference first.** Several samples
+   per input, paired CIs (`train/paired_stats.py`); try a lever without
+   training before spending a night on it.
 
 ## Licence
 

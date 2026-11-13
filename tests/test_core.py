@@ -197,3 +197,42 @@ def test_slice_separates_context_from_primary_grounding():
     assert table["with 'CTX'"]["m: grounded in primary"] == 0
     assert table["with 'CTX'"]["reference: grounded in primary"] == 1
     assert table["without 'CTX'"]["m: grounded in primary"] == 1
+
+
+# --- paired stats with a noise floor ---------------------------------------------
+
+def _paired_mod():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("paired", ROOT / "train" / "paired_stats.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_paired_stats_finds_a_real_difference_and_reports_noise():
+    mod = _paired_mod()
+    import random as _r
+    rng = _r.Random(0)
+    ra, rb = {}, {}
+    for i in range(200):
+        inp = f"--- P ---\nfix the_fn_{i}()"
+        ra[i] = {"eval_index": i, "input": inp} | {f"a_s{k}": (f"the_fn_{i}() bad" if rng.random() < 0.2 else "hmm") for k in range(3)}
+        rb[i] = {"eval_index": i, "input": inp} | {f"b_s{k}": (f"the_fn_{i}() bad" if rng.random() < 0.6 else "hmm") for k in range(3)}
+    metrics = mod.make_metrics("--- P ---", None)
+    res = mod.compare(("a", ra, ["a_s0", "a_s1", "a_s2"]), ("b", rb, ["b_s0", "b_s1", "b_s2"]), metrics)
+    d, lo, hi = res["grounded in primary"]["diff"]
+    assert 0.3 < d < 0.5 and lo > 0                      # a real +40 points is detected
+    n, nlo, nhi = res["grounded in primary"]["noise"]
+    assert nlo <= 0 <= nhi                               # same arm vs itself: CI contains 0
+
+
+def test_paired_stats_does_not_call_noise_a_finding():
+    mod = _paired_mod()
+    import random as _r
+    rng = _r.Random(1)
+    rows = {i: {"eval_index": i, "input": f"--- P ---\nfix f_{i}()"} for i in range(40)}
+    a = {i: r | {f"a_s{k}": (f"f_{i}() x" if rng.random() < 0.3 else "no") for k in range(3)} for i, r in rows.items()}
+    b = {i: r | {f"b_s{k}": (f"f_{i}() x" if rng.random() < 0.3 else "no") for k in range(3)} for i, r in rows.items()}
+    res = mod.compare(("a", a, ["a_s0", "a_s1", "a_s2"]), ("b", b, ["b_s0", "b_s1", "b_s2"]), mod.make_metrics("--- P ---", None))
+    _, lo, hi = res["grounded in primary"]["diff"]
+    assert lo <= 0 <= hi                                 # same true rate: no "finding"
