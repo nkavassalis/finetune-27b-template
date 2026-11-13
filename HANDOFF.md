@@ -3,8 +3,9 @@
 Where the work actually stopped. Update it in the same commit as any change.
 AGENTS.md is the durable rules; this is the current state.
 
-## Status
-<one paragraph>
+## Status (YYYY-MM-DD)
+<where things stand now, rewritten (not appended) whenever that changes;
+history goes in docs/LEARNINGS.md and the report>
 
 ## Running right now
 <jobs, where, how to check them (scripts/status.sh), how to stop them safely>

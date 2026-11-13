@@ -63,8 +63,8 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 | `project.toml` | **the one config**: base model, system prompt, LoRA, data, training, eval, conversion |
 | `ft27b/` | stdlib-only core: `config`, `template` (the one prompt format), `data` (validate / split / sample), `sizing` (Mac fit calculator), `order` (resumable data order), `infer` (cuda / mlx), CLI |
 | `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `paired_stats.py` (paired CIs and the noise floor), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh`, `night-run.sh` + `window-lib.sh` (optional overnight maintenance window), `workqueue.py` (the improvement queue) |
-| `scripts/` | `gate.sh`, `secret-scan.sh`, `status.sh` (hourly status), `night-reporter.sh` + `notify.sh` (optional email reports for unattended runs), `queue-runner.sh` (runs `QUEUE.toml`), `sync-to-node.sh`, `convert-mlx.sh`; `.status.env.example` |
-| `docs/` | `METHOD.md` (start here; §4 is how to go from one version to the next), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `PLAN-template.md`, `REPORT-template.md` |
+| `scripts/` | `gate.sh`, `docs_check.py` (doc drift, in the gate), `secret-scan.sh`, `status.sh` (hourly status), `night-reporter.sh` + `notify.sh` (optional email reports for unattended runs), `queue-runner.sh` (runs `QUEUE.toml`), `sync-to-node.sh`, `convert-mlx.sh`; `.status.env.example` |
+| `docs/` | `METHOD.md` (start here; §4 is how to go from one version to the next), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `PLAN-template.md`, `REPORT-template.md`, `LEARNINGS.md` (append-only: what you believed, what you found) |
 | `tests/` | hermetic tests pinning each lesson; real Qwen3.8-27B config fixtures |
 
 ## Measured defaults (from lkml-reviewer)

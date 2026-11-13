@@ -33,13 +33,48 @@ data or launching a run. Record where work stopped in `HANDOFF.md`.
 ```bash
 pip install -e '.[dev]'
 python -m pytest            # hermetic; test_merge.py runs only where torch is installed
-scripts/gate.sh             # tests + lint + python/shell syntax + secret scan
+scripts/gate.sh             # tests + lint + python/shell syntax + docs drift + secret scan
 ```
 
 ## Measured numbers
 
 Keep a table of your funnel and runs here (rows at each data stage, held-out
 loss, tok/s, peak memory) so a regression shows up as a changed number.
+
+## Documenting as we go
+
+What you learn is as much the output as the model. Docs drift quietly (in
+lkml-reviewer: a README calling an old version current, a stale handoff, a plan
+contradicting the code), so these are rules, and `scripts/docs_check.py` (in
+the gate) checks the mechanical part.
+
+**Every fact has one home; everything else links to it.**
+
+| fact | home |
+| --- | --- |
+| the story, two lines per version | README "The journey so far" table, near the top |
+| measured results per version | the report (`docs/REPORT-template.md` to start) |
+| what a version is for, its criteria (set before training), decisions | `docs/PLAN-v<N>.md`, **Status:** line at the top |
+| what we believed, what we found, what changed | `docs/LEARNINGS.md`, append-only, dated |
+| where things stand right now | `HANDOFF.md` Status, rewritten, never appended |
+| design, invariants, how to run | this file |
+| running long jobs | `docs/OPERATIONS.md` |
+
+**On each event, in the same commit as the change:**
+
+- **A version's results arrive:** report section, README journey row, PLAN
+  status → done with the outcome against its criteria, LEARNINGS entry for
+  any surprise, HANDOFF Status, model card if published.
+- **You find you were wrong** (bug, misdiagnosis, a number that didn't hold
+  up): LEARNINGS entry (Believed / Evidence / Changed / Generalizes) next to
+  the fix and its regression test.
+- **A decision is made:** dated in the PLAN; HANDOFF if it changes what runs next.
+- **Code stops matching a doc:** fix the doc in the same commit.
+- **A lesson applies beyond this project:** send it back to the template
+  (METHOD.md / OPERATIONS.md) and say so under **Generalizes**.
+- **End of a session:** rewrite HANDOFF Status with today's date.
+
+Don't quote numbers that change every commit (test counts) unless dated.
 
 ## Do not touch
 

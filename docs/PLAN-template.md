@@ -1,5 +1,9 @@
 # Plan: v<N>
 
+**Status:** draft (YYYY-MM-DD). One of: draft, proposal, queued, running, done,
+superseded, abandoned, with a date and what changed. `scripts/docs_check.py`
+requires it, and a README journey row for every PLAN-v<N>.md.
+
 Write this **before** training, and don't edit the criteria after the
 results are in. That's what keeps "better" from being redefined to fit.
 

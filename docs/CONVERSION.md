@@ -100,7 +100,7 @@ with sampling on both platforms, then:
 ## 7. Publish
 
 Private Hugging Face repos: the PEFT adapter (for CUDA users) and the
-converted MLX model (for Mac users), with `docs/REPORT.md` as the card, the
+converted MLX model (for Mac users), with your report (`docs/REPORT-template.md` to start) as the card,
 any disclaimer the model needs, and `MERGE_INFO.json`. Make a repo public only on
 purpose; decide that deliberately.
 
@@ -109,7 +109,7 @@ purpose; decide that deliberately.
 **2026-11-12, base model only** (`mlx-community/Qwen3.8-27B-8bit`, no LoRA:
 this validates the hardware path and the `lkml-reviewer` mlx backend, not our
 adapter). M4 Pro, 64 GB, wired limit 56 GB, mlx 0.32.4, mlx-lm 0.32.2,
-installed with `scripts/install-reviewer.sh` (pipx, `[mlx]` extra):
+installed with lkml-reviewer's install-reviewer.sh (pipx, `[mlx]` extra):
 
 | | predicted (§1) | measured |
 | --- | --- | --- |

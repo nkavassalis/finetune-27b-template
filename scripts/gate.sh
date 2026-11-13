@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The gate: tests, lint, syntax (Python and shell), secret scan. The pre-push
+# The gate: tests, lint, syntax (Python and shell), docs drift, secret scan. The pre-push
 # hook runs it; run it yourself before committing. Every step must pass, and a
 # step that can't run SKIPs loudly instead of passing silently.
 set -uo pipefail
@@ -20,6 +20,9 @@ else echo "SKIP — ruff not installed (pip install -e '.[dev]')"; fi
 step "syntax: python + shell"
 "$PY" -m compileall -q -x '\.venv|runs|data' . || fail=1
 for f in scripts/*.sh train/*.sh .githooks/*; do bash -n "$f" || { echo "syntax error: $f"; fail=1; }; done
+
+step "docs (drift check: dead paths, stale counts, plan status, handoff date, learnings format)"
+"$PY" scripts/docs_check.py || fail=1
 
 step "secret scan (staged + branch vs origin/main)"
 scripts/secret-scan.sh --staged || fail=1

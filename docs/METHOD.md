@@ -187,6 +187,16 @@ can, so the next comparison can tell you which change mattered:
 | the Mac build loses to CUDA | a conversion change (group size, mixed precision), not retraining |
 | a behaviour leaks (signatures, names) | strip it at export *everywhere it occurs*, not just at the end; then measure the rate in sampled generations |
 
+### Write it down as you go
+
+Each version ends with its learning recorded, not just its numbers: a README
+journey row (two lines: what changed, what you learned), the report section,
+the plan's status and outcome against the criteria you set, and a
+`docs/LEARNINGS.md` entry for every belief that turned out wrong. AGENTS.md
+"Documenting as we go" lists what to update on each event; `scripts/docs_check.py`
+in the gate catches the mechanical drift (dead paths, stale counts, plans
+without status or journey rows, a stale handoff).
+
 ## 5. Ship
 
 Run `docs/CONVERSION.md`: size check → merge in BF16 → verify the merge → MLX
