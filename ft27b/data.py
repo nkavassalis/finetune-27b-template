@@ -123,3 +123,35 @@ def split(rows: list[dict], key: str, eval_groups: list[str]) -> tuple[list, lis
 
 def sample(rows: list[dict], n: int, seed: int = 7) -> list[dict]:
     return random.Random(seed).sample(rows, min(n, len(rows)))
+
+
+_CODEISH = re.compile(r"[A-Za-z_]\w*\(\)|\b[a-z]+_[a-z0-9_]+\b|->|[{};]\s*$", re.M)
+
+
+def distribution_shift(train: list[dict], held: list[dict], *, tolerance: float = 0.2) -> list[str]:
+    """Warnings where the training targets don't look like the held-out targets.
+
+    lkml-reviewer v3 trained on replies with a median of 620 chars while the
+    held-out replies had 906, and the model wrote short replies. The author's
+    style hadn't changed (stable across eras); the data selection had. Check
+    this before every training run.
+    """
+    def med(rows, f):
+        vals = sorted(f(r) for r in rows)
+        return vals[len(vals) // 2] if vals else 0
+
+    warnings = []
+    checks = {
+        "output length (chars)": lambda r: len(r["output"]),
+        "input length (chars)": lambda r: len(r["input"]),
+    }
+    for name, f in checks.items():
+        a, b = med(train, f), med(held, f)
+        if b and abs(a - b) / b > tolerance:
+            warnings.append(f"median {name}: train {a} vs held-out {b} "
+                            f"({(a - b) / b:+.0%}); the model will learn the training distribution")
+    code = lambda rows: sum(bool(_CODEISH.search(r["output"])) for r in rows) / max(len(rows), 1)  # noqa: E731
+    ca, cb = code(train), code(held)
+    if abs(ca - cb) > tolerance / 2:
+        warnings.append(f"outputs with code-like tokens: train {ca:.0%} vs held-out {cb:.0%}")
+    return warnings

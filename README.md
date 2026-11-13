@@ -28,6 +28,7 @@ git config core.hooksPath .githooks             # gate + secret scan before ever
 ft27b validate data/all.jsonl                   # boilerplate, duplicates, empties (try examples/tiny/boilerplate.jsonl)
 ft27b sample data/all.jsonl -n 20               # READ them. Most bugs are found here.
 ft27b split data/all.jsonl                      # held out by [data] split_key / eval_groups
+ft27b shift                                     # do train targets look like held-out ones?
 
 # before training: will the result fit on the Mac?
 ft27b size ~/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B/snapshots/<rev>
@@ -41,6 +42,7 @@ train/watch-run.sh                              # off-cluster alarm (and scripts
 
 # 5. evaluate
 python3 train/score.py runs/run-1/compare.jsonl
+python3 train/slice.py runs/run-1/compare.jsonl --primary-marker '...' --context-marker '...'  # where it fails
 JUDGE_URL=... python3 train/judge_check.py runs/run-1/compare.jsonl 20 runs/run-1/judge_check.jsonl
 JUDGE_URL=... python3 train/judge.py runs/run-1/compare.jsonl runs/run-1/judge.jsonl --pair base_sampled,tuned_sampled
 
@@ -55,9 +57,9 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 | --- | --- |
 | `project.toml` | **the one config**: base model, system prompt, LoRA, data, training, eval, conversion |
 | `ft27b/` | stdlib-only core: `config`, `template` (the one prompt format), `data` (validate / split / sample), `sizing` (Mac fit calculator), `order` (resumable data order), `infer` (cuda / mlx), CLI |
-| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh` |
+| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh` |
 | `scripts/` | `gate.sh`, `secret-scan.sh`, `status.sh` (hourly status), `sync-to-node.sh`, `convert-mlx.sh` |
-| `docs/` | `METHOD.md` (start here), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `REPORT-template.md` |
+| `docs/` | `METHOD.md` (start here; §4 is how to go from one version to the next), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `PLAN-template.md`, `REPORT-template.md` |
 | `tests/` | hermetic tests pinning each lesson; real Qwen3.8-27B config fixtures |
 
 ## Measured defaults (from lkml-reviewer)
@@ -77,6 +79,9 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 4. **Restore what you stop**, cap memory, checkpoint for resume, watch from
    elsewhere (`docs/OPERATIONS.md`).
 5. **Merge in BF16, then quantize**, and gate the Mac model against the CUDA one.
+6. **Slice before you change anything.** Aggregates hide where a model fails;
+   check train-vs-held-out distributions (`ft27b shift`) and per-slice
+   grounding (`train/slice.py`), then change one thing per finding.
 
 ## Licence
 

@@ -165,3 +165,35 @@ def test_cli_without_a_project_toml_says_so(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert main(["validate", "x.jsonl"]) == 2
     assert "project.toml" in capsys.readouterr().err
+
+
+# --- iteration diagnostics -------------------------------------------------------
+
+def test_shift_flags_shorter_training_targets():
+    """lkml-reviewer v3: train median 620 chars vs held-out 906."""
+    train = [{"input": "x" * 100, "output": "y" * 620}] * 50
+    held = [{"input": "x" * 100, "output": "y" * 906}] * 50
+    warnings = data.distribution_shift(train, held)
+    assert any("output length" in w and "-32%" in w for w in warnings)
+
+
+def test_shift_is_quiet_when_distributions_match():
+    rows = [{"input": "x" * 100, "output": "y" * 900}] * 50
+    assert data.distribution_shift(rows, rows) == []
+
+
+def test_slice_separates_context_from_primary_grounding():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("slice_mod", ROOT / "train" / "slice.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rows = [
+        {"input": "CTX talk about the_thread_word\n--- P ---\nfix the_patch_fn()",
+         "reference": "the_patch_fn() is wrong", "m": "the_thread_word matters"},
+        {"input": "--- P ---\nfix other_fn()", "reference": "other_fn() is wrong", "m": "other_fn() hmm"},
+    ]
+    table = {t["slice"]: t for t in mod.report(rows, ["reference", "m"], "--- P ---", "CTX")}
+    # with context: the model talks about the thread, not the patch
+    assert table["with 'CTX'"]["m: grounded in primary"] == 0
+    assert table["with 'CTX'"]["reference: grounded in primary"] == 1
+    assert table["without 'CTX'"]["m: grounded in primary"] == 1

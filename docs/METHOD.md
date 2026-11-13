@@ -114,7 +114,52 @@ evidence, from cheap to strong:
 
 Write it up with `docs/REPORT-template.md`, including what didn't work.
 
-## 4. Ship
+## 4. Iterate: from one version's results to the next
+
+Don't change the recipe because a number looks bad. Find out *where* the model
+fails, then pick the one change that addresses that. Three kinds of criteria,
+written into the next version's plan (`docs/PLAN-template.md`) **before**
+training:
+
+- **Gates: no regression allowed.** Things the model must never start
+  doing again (signing as a real person, leaking emails, abuse above the
+  source's own rate, looping, a Mac build that loses to the CUDA one).
+- **Targets: move toward the reference.** The judge's win rate against the
+  previous version and the base, specificity, length, like-for-like loss,
+  human ratings.
+- **Diagnostics: tell you which lever to pull.** They are not scores.
+
+The diagnostics that found lkml-reviewer v3's two real problems, both now
+tools here:
+
+1. **Do the training targets look like the held-out targets?**
+   `ft27b shift`. v3 trained on replies with a median of 620 chars while the
+   held-out replies had 906, and the model wrote short replies. The author's
+   style was stable across 20 years; the *data selection* had skewed short.
+   Fix the selection, not the model.
+2. **Is the output grounded in the primary input or in extra context?**
+   `train/slice.py --primary-marker … --context-marker …`. Adding
+   discussion context to v3's inputs made it name something from the patch
+   8% of the time on inputs with context vs 31% without (the reference:
+   26% vs 62%). The extra context pulled it off the artifact it was meant to
+   review. Overall averages hid this. **Slice before you decide.**
+   - How you define "grounded" decides whether the effect shows at all. A
+     loose definition (any long word) put the same two slices at 47% vs
+     54%. Use the definition that measures what you care about, and report it.
+
+Then map each finding to one lever, and change as few things at once as you
+can, so the next comparison can tell you which change mattered:
+
+| finding | lever |
+| --- | --- |
+| targets shorter / thinner than the reference | rebalance or filter the data until `ft27b shift` is clean |
+| answers the context, not the artifact | artifact first, each section with its own token budget; trim context, never the artifact |
+| truncated inputs score worse | smarter truncation (keep every section's head) or longer context, if memory allows |
+| more false claims than before | preference training (DPO) on judge-ranked samples against the reference |
+| the Mac build loses to CUDA | a conversion change (group size, mixed precision), not retraining |
+| a behaviour leaks (signatures, names) | strip it at export *everywhere it occurs*, not just at the end; then measure the rate in sampled generations |
+
+## 5. Ship
 
 Run `docs/CONVERSION.md`: size check → merge in BF16 → verify the merge → MLX
 8-bit → smoke test → quality gate against the CUDA model → publish

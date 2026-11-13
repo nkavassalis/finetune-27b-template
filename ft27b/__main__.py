@@ -2,6 +2,7 @@
 
     ft27b validate data/sft.jsonl          # find boilerplate, duplicates, empties
     ft27b sample data/sft.jsonl -n 10      # read examples. Really read them.
+    ft27b shift                            # train targets vs held-out targets (length, code)
     ft27b split data/all.jsonl             # held-out split by [data] split_key
     ft27b size path/to/hf-model            # will it fit on the Mac, per bits/context
     ft27b prompt "some input"              # the exact rendered prompt (needs a tokenizer)
@@ -33,6 +34,18 @@ def cmd_validate(args, cfg) -> int:
     print("ok" if rep.ok else "problems found")
     print("Now read some rows by eye: ft27b sample", args.file)
     return 0 if rep.ok else 1
+
+
+def cmd_shift(args, cfg) -> int:
+    d = cfg["data"]
+    train = data.read(args.train or d["train"])
+    held = data.read(args.eval or d["eval"])
+    warnings = data.distribution_shift(train, held)
+    for w in warnings:
+        print(f"warning: {w}")
+    print(f"{len(train)} train vs {len(held)} held-out rows: "
+          + ("distributions match" if not warnings else "fix the data selection before training"))
+    return 1 if warnings else 0
 
 
 def cmd_sample(args, cfg) -> int:
@@ -111,6 +124,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", help="path to project.toml (default: search upwards)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("validate").add_argument("file")
+    sh = sub.add_parser("shift", help="do train targets look like held-out targets?")
+    sh.add_argument("--train")
+    sh.add_argument("--eval")
     s = sub.add_parser("sample")
     s.add_argument("file")
     s.add_argument("-n", type=int, default=10)
@@ -135,7 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     except (FileNotFoundError, ValueError) as e:
         print(f"ft27b: {e}", file=sys.stderr)
         return 2
-    return {"validate": cmd_validate, "sample": cmd_sample, "split": cmd_split, "size": cmd_size,
+    return {"validate": cmd_validate, "shift": cmd_shift, "sample": cmd_sample, "split": cmd_split, "size": cmd_size,
             "prompt": cmd_prompt, "infer": cmd_infer, "targets": cmd_targets}[args.cmd](args, cfg)
 
 
