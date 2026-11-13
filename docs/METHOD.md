@@ -173,7 +173,8 @@ tools here:
    inference first: an input layout, a prompt, a decoding setting. lkml-reviewer
    tested "patch before thread" by reordering v3's inputs at inference, with no
    retraining, and got much of the expected gain (patch grounding with context
-   20% → 33%, CI +1..+25 points). That made the planned retrain worth less as
+   21% → 43% on 100 patches, against the reference's 26% and 36% on the same
+   two layouts: from ~0.8× to ~1.2× the human rate). That made the planned retrain worth less as
    an experiment, but still worth running as the base for the next step. An
    inference probe takes an hour on a laptop-class machine; a training run
    takes a night of the cluster.
