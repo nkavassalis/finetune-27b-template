@@ -165,7 +165,10 @@ tools here:
    partly why v3 vs v2 came out "a tie". Generate several samples per input
    (`compare.py --samples K`) and compare with `train/paired_stats.py`. It
    gives a paired bootstrap CI for each difference, next to the noise floor's
-   CI. A difference inside the noise band is not a finding.
+   CI. A difference inside the noise band is not a finding. **Checksum the
+   inputs of a paired comparison:** on lkml-reviewer two files both called
+   "patch-first" differed in 672 of 774 inputs, which would have compared two
+   models on different questions.
 4. **Can you test the lever without training?** Many levers can be tried at
    inference first: an input layout, a prompt, a decoding setting. lkml-reviewer
    tested "patch before thread" by reordering v3's inputs at inference, with no
@@ -174,6 +177,11 @@ tools here:
    an experiment, but still worth running as the base for the next step. An
    inference probe takes an hour on a laptop-class machine; a training run
    takes a night of the cluster.
+5. **Decide the next step's starting point by a rule written beforehand.**
+   When a step depends on which model is better (e.g. preference training
+   starts from the best supervised model), write the rule down first ("v4
+   unless it is worse with the whole CI below zero") and let a script apply it
+   (`paired_stats.py --json`). Otherwise the rule bends to the result.
 
 Then map each finding to one lever, and change as few things at once as you
 can, so the next comparison can tell you which change mattered:
