@@ -24,3 +24,6 @@ dist/
 *.egg-info/
 .DS_Store
 !.status.env.example
+
+# your queue and its state are local (QUEUE.example.toml is the template)
+QUEUE.toml

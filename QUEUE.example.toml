@@ -1,0 +1,27 @@
+# The improvement queue (train/workqueue.py, scripts/queue-runner.sh).
+# Copy to QUEUE.toml. Items run top to bottom, one at a time, when their
+# prerequisites are done and their `when` check passes. Commands run from the
+# repo root on the monitoring box; cluster steps ssh out (keep addresses in
+# .status.env, not here).
+
+[[item]]
+id = "v2-train"
+title = "Train v2 (resumes across windows)"
+run = "scripts/q/cluster-plan.sh train-v2"   # exits 75 if the window ended first
+est_min = 120
+window = true
+
+[[item]]
+id = "v2-eval"
+title = "Evaluate v2: 3 samples x 200 held-out inputs, paired CIs vs v1"
+run = "scripts/q/eval-multisample.sh v2"
+est_min = 240
+after = ["v2-train"]
+window = true
+
+[[item]]
+id = "v3-check-judge"
+title = "A person checks 30 of the judge's rankings before preference training"
+run = "true"
+after = ["v2-eval"]
+gate = "human"

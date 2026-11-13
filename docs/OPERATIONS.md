@@ -91,6 +91,33 @@ at 14:00" in a healthy log line matched as a failure, and one failure produced
 several emails as the log grew. Then send one real message and check it
 arrived.
 
+## The improvement queue (optional)
+
+Work doesn't stop at one run. `QUEUE.toml` lists the next steps (train,
+evaluate, convert, analyse, check), and `scripts/queue-runner.sh start` works
+through them on the monitoring box, one at a time, forever:
+
+- **Order and prerequisites:** items run top to bottom, once their `after`
+  items are done and their `when` check (any shell test, e.g. "the results
+  file exists on the master") passes. Edit the file to add or reorder work.
+- **Windows:** `window = true` items start only inside the maintenance window,
+  and only if `est_min` fits before the hard stop. They get
+  `WINDOW_MINUTES_LEFT` to size their own stop.
+- **Long steps:** a step longer than one window exits **75** at the hard stop
+  ("not finished, resume later"). It goes back to pending and continues in the
+  next window; it doesn't halt the queue.
+- **Failures halt everything** until a person runs `workqueue.py reset ID`
+  (retry) or `skip ID`. Retrying a broken step unattended wastes nights.
+- **Human gates:** `gate = "human"` items wait for `workqueue.py approve ID`
+  and email "Needs you" once. Use them where a person must check something
+  the next step depends on, e.g. the judge's rankings before preference
+  training, or a decision to publish.
+- **Emails** (via `notify.sh`): Started, Done, Paused (resumes next window),
+  FAILED, Needs you.
+
+See `QUEUE.example.toml`. `tests/test_workqueue.py` covers order, gates,
+window fit, resume-later and halting, and the runner's exact email sequence.
+
 ## Monitoring: two layers, different jobs
 
 | layer | what | cadence | purpose |
