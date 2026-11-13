@@ -114,6 +114,19 @@ through them on the monitoring box, one at a time, forever:
   training, or a decision to publish.
 - **Emails** (via `notify.sh`): Started, Done, Paused (resumes next window),
   FAILED, Needs you.
+- **Detach long jobs that don't need the cluster** (e.g. ~10 h of sampling on
+  the Mac): the item starts them and returns, and a later item waits for them
+  with `when`. The runner is sequential, so a blocking day job would hold up
+  that night's cluster work.
+- **Keep addresses out of items:** item scripts read hosts from `.status.env`;
+  cluster-side plans that need addresses live in a gitignored directory.
+- **`pgrep -f` over ssh matches the remote shell running it,** so a readiness
+  check like `ssh host "pgrep -f compare.py"` is always "busy". Bracket a
+  letter: `'[c]ompare.py'`.
+- **Never overwrite a script that bash is running.** bash reads a script as it
+  executes it, so rewriting the file in place (scp, `>`) under a waiting
+  `night-run.sh` can make it run garbage. Copy to a temporary name and `mv`
+  over it: the running process keeps the old file.
 
 See `QUEUE.example.toml`. `tests/test_workqueue.py` covers order, gates,
 window fit, resume-later and halting, and the runner's exact email sequence.

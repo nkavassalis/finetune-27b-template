@@ -18,6 +18,9 @@
 #                empty EVAL_ARMS_MASTER skips evaluation
 #   EVAL_ADAPTERS_MASTER / EVAL_ADAPTERS_PEER   name=path lists for compare.py
 #   EVAL_SUBSET  held-out rows to generate for (default 100)
+#   EVAL_FILE_MASTER / EVAL_FILE_PEER   inputs per node (default data/sft_eval.jsonl);
+#                e.g. two chunks of training patches to make DPO candidates
+#   EVAL_EXTRA   extra compare.py args, e.g. "--samples 4 --max-new 600"
 #   EVAL_ONLY    1 = skip training and evaluate the existing runs/$RUN/adapter-final
 #   WORK, TRAIN_CTR, SERVE_CTR   as in run-chain.sh
 set -u
@@ -103,16 +106,16 @@ if [ -n "$EVAL_ARMS_MASTER" ]; then
   peer "rm -rf $(basename "$WORK")/runs/$RUN-adapter-final"
   scp -q -r "$WORK/runs/$RUN/adapter-final" "$PEER:$(basename "$WORK")/runs/$RUN-adapter-final"
   say "evaluating: master arms [$EVAL_ARMS_MASTER], peer arms [$EVAL_ARMS_PEER]"
-  cmp_cmd() {  # $1 = arms, $2 = adapters, $3 = out file
-    echo docker exec -w /work "$TRAIN_CTR" python3 train/compare.py --eval data/sft_eval.jsonl \
-      --subset "$EVAL_SUBSET" --modes sampled --arms "$1" --adapters $2 --out "$3"
+  cmp_cmd() {  # $1 = arms, $2 = adapters, $3 = out file, $4 = eval file
+    echo docker exec -w /work "$TRAIN_CTR" python3 train/compare.py --eval "${4:-data/sft_eval.jsonl}" \
+      --subset "$EVAL_SUBSET" --modes sampled --arms "$1" --adapters $2 --out "$3" ${EVAL_EXTRA:-}
   }
   if [ -n "$EVAL_ARMS_PEER" ]; then
-    peer "$(cmp_cmd "$EVAL_ARMS_PEER" "$EVAL_ADAPTERS_PEER" "runs/$RUN-compare-peer.jsonl")" \
+    peer "$(cmp_cmd "$EVAL_ARMS_PEER" "$EVAL_ADAPTERS_PEER" "runs/$RUN-compare-peer.jsonl" "${EVAL_FILE_PEER:-}")" \
       > "$WORK/runs/$RUN.compare-peer.out" 2>&1 &
     cpeer=$!
   fi
-  $(cmp_cmd "$EVAL_ARMS_MASTER" "$EVAL_ADAPTERS_MASTER" "runs/$RUN/compare-master.jsonl") \
+  $(cmp_cmd "$EVAL_ARMS_MASTER" "$EVAL_ADAPTERS_MASTER" "runs/$RUN/compare-master.jsonl" "${EVAL_FILE_MASTER:-}") \
     > "$WORK/runs/$RUN.compare-master.out" 2>&1
   [ -n "$EVAL_ARMS_PEER" ] && wait $cpeer
   [ -n "$EVAL_ARMS_PEER" ] && scp -q "$PEER:$(basename "$WORK")/runs/$RUN-compare-peer.jsonl" \

@@ -27,3 +27,4 @@ dist/
 
 # your queue and its state are local (QUEUE.example.toml is the template)
 QUEUE.toml
+notifications.log
