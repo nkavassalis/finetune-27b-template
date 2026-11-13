@@ -18,6 +18,7 @@
 #                empty EVAL_ARMS_MASTER skips evaluation
 #   EVAL_ADAPTERS_MASTER / EVAL_ADAPTERS_PEER   name=path lists for compare.py
 #   EVAL_SUBSET  held-out rows to generate for (default 100)
+#   EVAL_ONLY    1 = skip training and evaluate the existing runs/$RUN/adapter-final
 #   WORK, TRAIN_CTR, SERVE_CTR   as in run-chain.sh
 set -u
 : "${RUN:?}" "${PEER:?}" "${MASTER_ADDR:?}" "${IFACE:?}"
@@ -53,6 +54,9 @@ restore() {
   say "chain finished"
 }
 trap restore EXIT
+# A stop signal (the window's hard stop, a kill) becomes a normal exit, so the
+# EXIT trap above runs and serving is restored.
+trap 'exit 143' TERM INT
 set -e
 
 NCCL_ENV=(-e "NCCL_SOCKET_IFNAME=$IFACE" -e "GLOO_SOCKET_IFNAME=$IFACE" -e NCCL_IB_DISABLE=1
@@ -67,6 +71,9 @@ say "stopping $SERVE_CTR on both nodes"
 docker stop -t 60 "$SERVE_CTR" >> "$LOG" 2>&1
 peer docker stop -t 60 "$SERVE_CTR" >> "$LOG" 2>&1
 
+if [ "${EVAL_ONLY:-0}" = 1 ]; then
+  say "EVAL_ONLY: skipping training, evaluating existing runs/$RUN/adapter-final"
+else
 say "training $RUN on 2 nodes"
 peer "$(torchrun_cmd 1)" > "$WORK/runs/$RUN.rank1.out" 2>&1 &
 rank1=$!
@@ -82,6 +89,7 @@ if ! wait $rank1; then
   fi
 fi
 say "training done"
+fi
 
 if [ -n "$EVAL_ARMS_MASTER" ]; then
   # The peer needs the new adapter for its arms. The container writes as root

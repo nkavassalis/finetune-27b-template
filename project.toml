@@ -47,3 +47,15 @@ repetition_penalty = 1.1
 bits = 8                # MLX quantization; 8 is the default target (docs/CONVERSION.md)
 group_size = 64
 mac_wired_limit_gb = 48 # what macOS lets the GPU wire on the target Mac (~75% of RAM by default)
+
+# Optional: a maintenance window, for machines that serve something by day.
+# train/night-run.sh waits for it, runs the night's plan, and stops at
+# end minus stop_margin_min, restoring serving. Long training resumes the next
+# night from its last checkpoint (sft_lora.py --resume-auto). Delete this
+# section if the GPUs are yours all the time. Environment variables
+# (WINDOW_START, WINDOW_END, WINDOW_TZ, STOP_MARGIN_MIN) override these.
+[window]
+start = "20:00"
+end = "08:00"
+timezone = "America/New_York"   # the cluster's local time
+stop_margin_min = 20            # time to restore serving before the window ends

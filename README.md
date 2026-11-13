@@ -39,6 +39,7 @@ RUN=smoke TRAIN_EXTRA="--limit 40 --max-steps 3" train/run-chain.sh   # on the n
 RUN=run-1 train/run-chain.sh                    # one node
 RUN=run-1 PEER=... MASTER_ADDR=... IFACE=... train/run-chain-2node.sh  # two nodes
 train/watch-run.sh                              # off-cluster alarm (and scripts/status.sh hourly)
+PLAN=runs/night-plan.sh setsid nohup train/night-run.sh &   # optional: run inside a nightly maintenance window
 
 # 5. evaluate
 python3 train/score.py runs/run-1/compare.jsonl
@@ -57,7 +58,7 @@ ft27b infer --backend mlx --model ~/models/my-model/mlx-8bit --input-file exampl
 | --- | --- |
 | `project.toml` | **the one config**: base model, system prompt, LoRA, data, training, eval, conversion |
 | `ft27b/` | stdlib-only core: `config`, `template` (the one prompt format), `data` (validate / split / sample), `sizing` (Mac fit calculator), `order` (resumable data order), `infer` (cuda / mlx), CLI |
-| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh` |
+| `train/` | `sft_lora.py` (BF16 LoRA, 1–2 nodes, memory cap, resume), `compare.py`, `score.py`, `slice.py` (metrics per input slice), `judge.py`, `judge_check.py`, `merge_lora.py`, `run-chain*.sh`, `watch-run.sh`, `night-run.sh` + `window-lib.sh` (optional overnight maintenance window) |
 | `scripts/` | `gate.sh`, `secret-scan.sh`, `status.sh` (hourly status), `sync-to-node.sh`, `convert-mlx.sh` |
 | `docs/` | `METHOD.md` (start here; §4 is how to go from one version to the next), `OPERATIONS.md`, `CONVERSION.md`, `HARDWARE.md`, `PLAN-template.md`, `REPORT-template.md` |
 | `tests/` | hermetic tests pinning each lesson; real Qwen3.8-27B config fixtures |
