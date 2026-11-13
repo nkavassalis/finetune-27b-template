@@ -134,9 +134,20 @@ tools here:
 
 1. **Do the training targets look like the held-out targets?**
    `ft27b shift`. v3 trained on replies with a median of 620 chars while the
-   held-out replies had 906, and the model wrote short replies. The author's
-   style was stable across 20 years; the *data selection* had skewed short.
-   Fix the selection, not the model.
+   held-out replies had 906, and the model wrote short replies. Then **find out
+   why before you fix it.** lkml-reviewer first blamed the data selection and
+   planned a length filter. Two checks overturned that:
+   - Measured *after* cleaning (the raw text was padded with footers and
+     headers), the author simply writes longer now: ~580 chars per reply
+     through 2005–2019, ~780 in 2020–2024. The held-out years were a different
+     era. A time-based split guards against leakage, and it also builds in
+     this drift. Fix with **recency weighting**, not filtering.
+   - Reading the rows a length filter would drop: about half were real terse
+     technical replies. The filter would have taught the model that short
+     means wrong.
+
+   Measure on the same transformation the model trains on, and read what a
+   filter removes before adopting it.
 2. **Is the output grounded in the primary input or in extra context?**
    `train/slice.py --primary-marker … --context-marker …`. Adding
    discussion context to v3's inputs made it name something from the patch

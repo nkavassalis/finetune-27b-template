@@ -132,9 +132,10 @@ def distribution_shift(train: list[dict], held: list[dict], *, tolerance: float 
     """Warnings where the training targets don't look like the held-out targets.
 
     lkml-reviewer v3 trained on replies with a median of 620 chars while the
-    held-out replies had 906, and the model wrote short replies. The author's
-    style hadn't changed (stable across eras); the data selection had. Check
-    this before every training run.
+    held-out replies had 906, and the model wrote short replies. The cause was
+    drift over time (the author writes longer now), not the selection, so the
+    fix was recency weighting. A warning here says *that* the distributions
+    differ; slice by time and source to find out *why* before changing data.
     """
     def med(rows, f):
         vals = sorted(f(r) for r in rows)
