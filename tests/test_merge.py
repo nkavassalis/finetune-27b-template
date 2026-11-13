@@ -51,6 +51,8 @@ def test_merge_is_w_plus_scaled_ba(tmp_path):
     assert torch.equal(untouched, st.load_file(str(base / "b.safetensors"))["model.visual.x.weight"])
     info = json.loads((tmp_path / "out" / "MERGE_INFO.json").read_text())
     assert info["modules_merged"] == 1 and info["scale"] == 2.0
+    # MERGE_INFO ships with published models: no local filesystem paths in it
+    assert str(tmp_path) not in json.dumps(info)
 
 
 def test_rslora_uses_alpha_over_sqrt_r(tmp_path):
