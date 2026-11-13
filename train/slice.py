@@ -75,7 +75,9 @@ def main() -> None:
     IDENT = LOOSE if args.loose else STRICT
     with open(args.compare_jsonl) as f:
         rows = [json.loads(line) for line in f]
-    arms = ["reference"] + [k for k in rows[0] if k not in ("input", "reference", "eval_index")]
+    # Arms are the text fields; skip metadata such as the Mac's gen_tps / peak_gb.
+    arms = ["reference"] + [k for k, v in rows[0].items()
+                            if k not in ("input", "reference", "eval_index") and isinstance(v, str)]
     table = report(rows, arms, args.primary_marker, args.context_marker)
     print("| slice | n | " + " | ".join(f"{a} grounded / length" for a in arms) + " |")
     print("|---" * (len(arms) + 2) + "|")

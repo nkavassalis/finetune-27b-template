@@ -199,6 +199,20 @@ def test_slice_separates_context_from_primary_grounding():
     assert table["without 'CTX'"]["m: grounded in primary"] == 1
 
 
+def test_slice_cli_ignores_numeric_metadata(tmp_path):
+    # Mac generations carry gen_tps / peak_gb; slice.py once took them for arms
+    # and crashed on lkml-reviewer's input-order probe.
+    import subprocess
+    import sys
+    f = tmp_path / "c.jsonl"
+    f.write_text(json.dumps({"input": "--- P ---\nfix other_fn()", "reference": "other_fn() bad",
+                             "m": "other_fn() hmm", "eval_index": 3, "gen_tps": 9.5, "peak_gb": 30.1}) + "\n")
+    out = subprocess.run([sys.executable, str(ROOT / "train" / "slice.py"), str(f),
+                          "--primary-marker", "--- P ---"], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert "gen_tps" not in out.stdout and "m grounded" in out.stdout
+
+
 # --- paired stats with a noise floor ---------------------------------------------
 
 def _paired_mod():
