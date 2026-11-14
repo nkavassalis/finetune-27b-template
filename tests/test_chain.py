@@ -41,3 +41,13 @@ def test_a_resumed_run_copies_the_checkpoint_to_the_peer_first(tmp_path):
     copy = next(i for i, c in enumerate(calls) if c.startswith("scp") and "r1/adapter-latest" in c)
     assert rc == 0 and copy < first_train
     assert "resuming: copied runs/r1/adapter-latest (step 50)" in log
+
+
+def test_the_resume_copy_reclaims_the_peers_root_owned_run_dir_first(tmp_path):
+    ck = tmp_path / "work" / "runs" / "r1" / "adapter-latest"
+    ck.mkdir(parents=True)
+    (ck / "STEP").write_text("50")
+    rc, calls, _ = run_chain(tmp_path)
+    chown = next(i for i, c in enumerate(calls) if c.startswith("ssh") and "chown" in c and "/work/runs/r1" in c)
+    copy = next(i for i, c in enumerate(calls) if c.startswith("scp") and "r1/adapter-latest" in c)
+    assert rc == 0 and chown < copy

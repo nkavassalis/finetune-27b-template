@@ -83,7 +83,8 @@ say "training $RUN on 2 nodes"
 # (found on lkml-reviewer before it bit: one-night runs never resumed).
 if [ -f "$WORK/runs/$RUN/adapter-latest/STEP" ]; then
   docker exec "$TRAIN_CTR" chown -R "$(id -u):$(id -g)" "/work/runs/$RUN/adapter-latest" >> "$LOG" 2>&1 || true
-  peer "rm -rf $(basename "$WORK")/runs/$RUN/adapter-latest && mkdir -p $(basename "$WORK")/runs/$RUN"
+  # the peer's runs/$RUN was made by its container, as root: hand it back first
+  peer "docker exec $TRAIN_CTR chown -R $(id -u):$(id -g) /work/runs/$RUN 2>/dev/null; rm -rf $(basename "$WORK")/runs/$RUN/adapter-latest && mkdir -p $(basename "$WORK")/runs/$RUN"
   scp -q -r "$WORK/runs/$RUN/adapter-latest" "$PEER:$(basename "$WORK")/runs/$RUN/adapter-latest"
   say "resuming: copied runs/$RUN/adapter-latest (step $(cat "$WORK/runs/$RUN/adapter-latest/STEP")) to the peer"
 fi
