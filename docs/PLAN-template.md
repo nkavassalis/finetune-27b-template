@@ -26,6 +26,9 @@ tell which change mattered.
 
 **Gates (no regression):**
 **Targets (vs v<N-1> and base):**
+**Data rate:** each target metric measured on the training targets
+(`train/score.py --targets data/sft.jsonl`). A model rarely beats its data:
+a target above the data's rate needs a data change, not a training change.
 **Eval set:** same as v<N-1>? If not, how loss stays comparable.
 
 ## Decision: <an automatic choice this plan makes, e.g. which model the next step starts from>

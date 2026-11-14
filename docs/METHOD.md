@@ -138,6 +138,15 @@ training:
   human ratings.
 - **Diagnostics: tell you which lever to pull.** They are not scores.
 
+**Diagnose the data before the model.** When a model falls short on a
+metric, first run that metric on its training targets (`train/score.py
+--targets`, or `--train` to put the data's rate in every results table). If
+the targets score about the same as the model, the model learned the data and
+no training change will help: change what you train on. And if the reference
+itself scores low on a target metric, that's a finding about the data or the
+metric, not a bar to clear. lkml-reviewer read "Linus names the patch 24% of
+the time" as a benchmark for two versions; it was the data's ceiling.
+
 The diagnostics that found lkml-reviewer v3's two real problems, both now
 tools here:
 
