@@ -78,6 +78,15 @@ if [ "${EVAL_ONLY:-0}" = 1 ]; then
   say "EVAL_ONLY: skipping training, evaluating existing runs/$RUN/adapter-final"
 else
 say "training $RUN on 2 nodes"
+# Only rank 0 writes checkpoints. A resumed run needs the same checkpoint on the
+# peer, or rank 1 restarts from step 0 and the ranks disagree on the steps left
+# (found on lkml-reviewer before it bit: one-night runs never resumed).
+if [ -f "$WORK/runs/$RUN/adapter-latest/STEP" ]; then
+  docker exec "$TRAIN_CTR" chown -R "$(id -u):$(id -g)" "/work/runs/$RUN/adapter-latest" >> "$LOG" 2>&1 || true
+  peer "rm -rf $(basename "$WORK")/runs/$RUN/adapter-latest && mkdir -p $(basename "$WORK")/runs/$RUN"
+  scp -q -r "$WORK/runs/$RUN/adapter-latest" "$PEER:$(basename "$WORK")/runs/$RUN/adapter-latest"
+  say "resuming: copied runs/$RUN/adapter-latest (step $(cat "$WORK/runs/$RUN/adapter-latest/STEP")) to the peer"
+fi
 peer "$(torchrun_cmd 1)" > "$WORK/runs/$RUN.rank1.out" 2>&1 &
 rank1=$!
 $(torchrun_cmd 0) > "$WORK/runs/$RUN.out" 2>&1

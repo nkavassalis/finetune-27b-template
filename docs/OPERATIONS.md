@@ -20,7 +20,11 @@ this template came from); see the incident at the end.
 3. **Checkpoint for resume, not just for results.** Save the adapter *and* the
    optimizer state every N steps (`--save-every 50`). Make resuming replay the
    data order exactly (`--resume-from/--resume-step`; verified to match an
-   uninterrupted run).
+   uninterrupted run). On two nodes only rank 0 writes the checkpoint, so the
+   chain copies it to the peer before a resumed run
+   (`train/run-chain-2node.sh`); without that, rank 1 restarts at step 0 and
+   the ranks disagree on the steps left. Found by reading, before it bit: runs
+   that fit in one night never resume, so test a resume on purpose.
 4. **Watch it from somewhere else.** Monitoring that runs on the node being
    watched dies with it. See below.
 
@@ -56,7 +60,9 @@ with an optional hard stop after `MAX_HOURS`. Everything else is the same:
 the plan, the stop handling, the safety net and the reporting. Running
 outside the agreed window needs the owner's explicit OK; the log records
 that the run was started by request, and the reporter emails a "Started"
-notice for it.
+notice for it. `night-run.sh` exports its hard stop as `PLAN_DEADLINE`, and
+`need_minutes` uses it. Without that, the plan measures against the regular
+window: a GO_NOW launch at 07:59 skipped every step ("-19 min left").
 
 ### Unattended runs: reports by email (optional)
 
@@ -105,7 +111,14 @@ through them on the monitoring box, one at a time, forever:
   file exists on the master") passes. Edit the file to add or reorder work.
 - **Windows:** `window = true` items start only inside the maintenance window,
   and only if `est_min` fits before the hard stop. They get
-  `WINDOW_MINUTES_LEFT` to size their own stop.
+  `WINDOW_MINUTES_LEFT` to size their own stop. When the owner allows downtime
+  outside the window for a while, write the end time to
+  `<state dir>/open-until` (any `date -d` string): window items run until then
+  and it expires by itself.
+- **Deploy what a step depends on, in the step.** Copy the scripts it runs to
+  every node (temporary name + `mv`), and checksum local against the nodes
+  first: lkml-reviewer's cluster had an older `compare.py` without the flag
+  the next step needed, and nothing would have said so until it failed.
 - **Long steps:** a step longer than one window exits **75** at the hard stop
   ("not finished, resume later"). It goes back to pending and continues in the
   next window; it doesn't halt the queue.
