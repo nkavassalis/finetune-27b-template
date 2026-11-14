@@ -17,6 +17,15 @@ look reasonable, it decides.
 `input` is the full user turn the model will see at inference time; `output`
 is exactly what it should learn to say.
 
+**Measure how many targets actually do the task.** Pick a cheap test of
+"this output does what we're teaching" (for code review: it names something
+from the patch) and run it on the training targets before anything else. On
+lkml-reviewer only 33% of the replies did; the rest were design arguments and
+thread replies. Two versions (v3, v4) then tried to make the model engage the
+patch more, and it couldn't exceed its targets' rate (25% vs 33%). A model
+learns the task its data actually contains, not the one you named. Filter to
+the rows that do the task, or know that's your ceiling.
+
 **Read it by eye, every time it changes.** `ft27b sample data/sft.jsonl -n 20`.
 On lkml-reviewer, five separate data bugs passed every test and produced
 plausible counts. Every one was found by reading rows or a model's output:
@@ -169,6 +178,9 @@ tools here:
    inputs of a paired comparison:** on lkml-reviewer two files both called
    "patch-first" differed in 672 of 774 inputs, which would have compared two
    models on different questions.
+   **Never build a version on a single-sample probe:** lkml-reviewer's v4
+   retrained for an input layout because a 1-sample probe showed 43% vs 21%;
+   at 200 patches x 3 samples it was 24% vs 25%.
 4. **Can you test the lever without training?** Many levers can be tried at
    inference first: an input layout, a prompt, a decoding setting. lkml-reviewer
    tested "patch before thread" by reordering v3's inputs at inference, with no
