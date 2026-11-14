@@ -183,6 +183,10 @@ tools here:
    starts from the best supervised model), write the rule down first ("v4
    unless it is worse with the whole CI below zero") and let a script apply it
    (`paired_stats.py --json`). Otherwise the rule bends to the result.
+   The rule must include the metric the next step is meant to improve: on
+   lkml-reviewer the rule watched grounding and looping, preference training
+   was for correctness, and the judge showed the "better" model made more
+   false claims. If a rule can't see that metric, put a human gate after it.
 
 Then map each finding to one lever, and change as few things at once as you
 can, so the next comparison can tell you which change mattered:
