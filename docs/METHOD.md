@@ -187,6 +187,10 @@ tools here:
    lkml-reviewer the rule watched grounding and looping, preference training
    was for correctness, and the judge showed the "better" model made more
    false claims. If a rule can't see that metric, put a human gate after it.
+   `train/decide.py --target <metric>` does this mechanically: after the rule
+   picks, it checks every result and exits 76 (the queue waits for a person)
+   on a significant conflict, or if the target metric leans the other way at
+   all. Significance alone isn't enough: that judge result was p = 0.06.
 
 Then map each finding to one lever, and change as few things at once as you
 can, so the next comparison can tell you which change mattered:
