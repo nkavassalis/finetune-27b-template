@@ -31,8 +31,9 @@ tell which change mattered.
 ## Decision: <an automatic choice this plan makes, e.g. which model the next step starts from>
 
 **Optimizes:** what the step after this decision is for (e.g. correctness).
-**Measured by:** which signal in the rule measures that. If none does, say so,
-and gate the decision on a person.
+**Measured by:** which signal in the rule measures that. Best: the next
+step's own scoring function applied to the options (`train/rubric.py`). If
+none does, say so, and gate the decision on a person.
 
 The rule, written before the data, applied by a script; then
 `train/decide.py --target <that signal>` checks it against every result

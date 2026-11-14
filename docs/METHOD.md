@@ -191,6 +191,10 @@ tools here:
    picks, it checks every result and exits 76 (the queue waits for a person)
    on a significant conflict, or if the target metric leans the other way at
    all. Significance alone isn't enough: that judge result was p = 0.06.
+   Make the target the next step's own scoring function (`train/rubric.py
+   score` then `paired`): before preference training, score the candidate
+   starting models with the rubric that will score the pairs. A judge with a
+   different rubric answers a different question.
 
 Then map each finding to one lever, and change as few things at once as you
 can, so the next comparison can tell you which change mattered:
