@@ -193,6 +193,11 @@ survive the session, add a system cron entry on the monitoring box, e.g.
       lkml-reviewer's run-3b trained for 10 h, then stopped at a copy step the
       smoke test had skipped (the container wrote the adapter as root, mode 600).
 - [ ] Memory cap set; peak memory from the smoke test well under it.
+- [ ] The smoke test runs on **as many nodes as the real run**. Code that only
+      exists in the distributed path (DDP wrapping, collectives, rank-0 saves)
+      never runs on one GPU. lkml-reviewer's DPO trainer called a PEFT method
+      on the DDP-wrapped model; only the 2-node smoke test hit it. After
+      wrapping, call model methods on the unwrapped module.
 - [ ] Checkpoints every ≤ 1 h of work, with optimizer state.
 - [ ] Serving stack stopped *by the chain script*, restored by its trap.
 - [ ] The smoke test runs against the **same paths and leftover state** as the
