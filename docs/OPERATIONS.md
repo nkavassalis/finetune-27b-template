@@ -206,6 +206,11 @@ survive the session, add a system cron entry on the monitoring box, e.g.
       never runs on one GPU. lkml-reviewer's DPO trainer called a PEFT method
       on the DDP-wrapped model; only the 2-node smoke test hit it. After
       wrapping, call model methods on the unwrapped module.
+- [ ] Any new trainer calls `model.train()` before its loop. `from_pretrained`
+      returns eval mode, and HF's gradient checkpointing is silently off in
+      eval mode. lkml-reviewer's DPO trainer ran out of memory for that reason;
+      its first fix (smaller logits) left the memory figures identical, which
+      is how we knew the diagnosis was wrong.
 - [ ] Checkpoints every ≤ 1 h of work, with optimizer state.
 - [ ] Serving stack stopped *by the chain script*, restored by its trap.
 - [ ] The smoke test runs against the **same paths and leftover state** as the
