@@ -14,12 +14,14 @@ def run_chain(tmp: Path, **env) -> tuple[int, list[str], str]:
     bin_.mkdir(exist_ok=True)
     calls = tmp / "calls.log"
     for tool in ("docker", "ssh", "scp"):
-        (bin_ / tool).write_text(f'#!/bin/bash\necho "{tool} $*" >> {calls}\n')
+        # pgrep finds no leftover trainers, so restore doesn't wait
+        (bin_ / tool).write_text(f'#!/bin/bash\necho "{tool} $*" >> {calls}\n'
+                                 'case "$*" in *pgrep*) exit 1;; esac\n')
         (bin_ / tool).chmod(0o755)
     work = tmp / "work"
     (work / "runs").mkdir(parents=True, exist_ok=True)
     e = {**os.environ, "PATH": f"{bin_}:{os.environ['PATH']}", "WORK": str(work), "RUN": "r1",
-         "PEER": "peer", "MASTER_ADDR": "192.0.2.1", "IFACE": "eth9", **env}
+         "PEER": "peer", "MASTER_ADDR": "192.0.2.1", "IFACE": "eth9", "RESTORE_SETTLE_SEC": "0", **env}
     p = subprocess.run(["bash", str(CHAIN)], env=e, capture_output=True, text=True)
     logs = list(work.rglob("chain-r1.log"))
     return p.returncode, calls.read_text().splitlines() if calls.exists() else [], \
@@ -51,3 +53,12 @@ def test_the_resume_copy_reclaims_the_peers_root_owned_run_dir_first(tmp_path):
     chown = next(i for i, c in enumerate(calls) if c.startswith("ssh") and "chown" in c and "/work/runs/r1" in c)
     copy = next(i for i, c in enumerate(calls) if c.startswith("scp") and "r1/adapter-latest" in c)
     assert rc == 0 and chown < copy
+
+
+def test_restore_checks_the_trainers_are_gone_before_starting_serving(tmp_path):
+    # vLLM checks free GPU memory at startup; started 6 s after a crashed run it
+    # refused and stayed down for 7 hours (lkml-reviewer, 2026-11-15).
+    _, calls, _ = run_chain(tmp_path)
+    pgrep = next(i for i, c in enumerate(calls) if "pgrep" in c)
+    start = next(i for i, c in enumerate(calls) if c.startswith("docker start"))
+    assert pgrep < start
