@@ -201,6 +201,11 @@ survive the session, add a system cron entry on the monitoring box, e.g.
       lkml-reviewer's run-3b trained for 10 h, then stopped at a copy step the
       smoke test had skipped (the container wrote the adapter as root, mode 600).
 - [ ] Memory cap set; peak memory from the smoke test well under it.
+- [ ] The step that **checks** the smoke test's result has seen a real pass.
+      lkml-reviewer's DPO smoke test passed, but the queue step checked its
+      `touch`-made marker with `test -s` (non-empty), reported a failure, and
+      the queue lost a night. A check that has only ever seen failures is
+      untested.
 - [ ] The smoke test runs on **as many nodes as the real run**. Code that only
       exists in the distributed path (DDP wrapping, collectives, rank-0 saves)
       never runs on one GPU. lkml-reviewer's DPO trainer called a PEFT method
